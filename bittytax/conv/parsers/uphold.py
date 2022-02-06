@@ -14,24 +14,64 @@ def parse_uphold_v2(data_row, parser, **_kwargs):
     data_row.timestamp = DataParser.parse_timestamp(row_dict['Date'])
 
     if row_dict['Type'] == "in":
-        data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_DEPOSIT,
+        if row_dict['Origin'] == "credit-card" or row_dict['Origin'] == "bank":
+                    data_row.t_record = [TransactionOutRecord(TransactionOutRecord.TYPE_DEPOSIT,
                                                  data_row.timestamp,
                                                  buy_quantity=row_dict['Origin Amount'],
                                                  buy_asset=row_dict['Origin Currency'],
                                                  fee_quantity=row_dict['Fee Amount'] \
                                                      if row_dict['Fee Amount'] else None,
                                                  fee_asset=row_dict['Fee Currency'],
-                                                 wallet=WALLET)
+                                                 wallet=WALLET),
+
+                                                 TransactionOutRecord(TransactionOutRecord.TYPE_TRADE,
+                                                 data_row.timestamp,
+                                                 buy_quantity=row_dict['Destination Amount'],
+                                                 buy_asset=row_dict['Destination Currency'],
+                                                 sell_quantity=row_dict['Origin Amount'],
+                                                 sell_asset=row_dict['Origin Currency'],
+                                                 fee_quantity=row_dict['Fee Amount'] \
+                                                     if row_dict['Fee Amount'] else None,
+                                                 fee_asset=row_dict['Fee Currency'],
+                                                 wallet=WALLET)]
+        elif row_dict['Destination'] == "uphold" and row_dict['Origin'] == "uphold":
+            data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_AIRDROP,
+                                                    data_row.timestamp,
+                                                    buy_quantity=row_dict['Origin Amount'],
+                                                    buy_asset=row_dict['Origin Currency'],
+                                                    fee_quantity=row_dict['Fee Amount'] \
+                                                        if row_dict['Fee Amount'] else None,
+                                                    fee_asset=row_dict['Fee Currency'],
+                                                    wallet=WALLET)
+        else:
+            data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_DEPOSIT,
+                                                    data_row.timestamp,
+                                                    buy_quantity=row_dict['Origin Amount'],
+                                                    buy_asset=row_dict['Origin Currency'],
+                                                    fee_quantity=row_dict['Fee Amount'] \
+                                                        if row_dict['Fee Amount'] else None,
+                                                    fee_asset=row_dict['Fee Currency'],
+                                                    wallet=WALLET)
     elif row_dict['Type'] == "out":
         if row_dict['Origin Currency'] == row_dict['Destination Currency']:
-            data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_WITHDRAWAL,
-                                                     data_row.timestamp,
-                                                     sell_quantity=row_dict['Destination Amount'],
-                                                     sell_asset=row_dict['Origin Currency'],
-                                                     fee_quantity=row_dict['Fee Amount'] \
-                                                         if row_dict['Fee Amount'] else None,
-                                                     fee_asset=row_dict['Fee Currency'],
-                                                     wallet=WALLET)
+            if row_dict['Destination'] == "uphold" and row_dict['Origin'] == "uphold":
+                data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_SPEND,
+                                                        data_row.timestamp,
+                                                        sell_quantity=row_dict['Destination Amount'],
+                                                        sell_asset=row_dict['Origin Currency'],
+                                                        fee_quantity=row_dict['Fee Amount'] \
+                                                            if row_dict['Fee Amount'] else None,
+                                                        fee_asset=row_dict['Fee Currency'],
+                                                        wallet=WALLET)
+            else:
+                data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_WITHDRAWAL,
+                                                        data_row.timestamp,
+                                                        sell_quantity=row_dict['Destination Amount'],
+                                                        sell_asset=row_dict['Origin Currency'],
+                                                        fee_quantity=row_dict['Fee Amount'] \
+                                                            if row_dict['Fee Amount'] else None,
+                                                        fee_asset=row_dict['Fee Currency'],
+                                                        wallet=WALLET)
         else:
             data_row.t_record = TransactionOutRecord(TransactionOutRecord.TYPE_WITHDRAWAL,
                                                      data_row.timestamp,

@@ -80,8 +80,14 @@ class OutputExcel(OutputBase):
             worksheet = Worksheet(self, data_file)
 
             data_rows = sorted(data_file.data_rows, key=lambda dr: dr.timestamp, reverse=False)
+            row_num = 1
             for i, data_row in enumerate(data_rows):
-                worksheet.add_row(data_row, i + 1)
+                if(data_row.t_record and isinstance(data_row.t_record, list)):
+                    worksheet.add_row(data_row, row_num)
+                    row_num = row_num + len(data_row.t_record)
+                else:
+                    worksheet.add_row(data_row, row_num)
+                    row_num = row_num + 1
 
             if data_rows:
                 worksheet.make_table(len(data_rows), data_file.parser.worksheet_name)
@@ -184,31 +190,40 @@ class Worksheet(object):
 
     @staticmethod
     def _is_microsecond_timestamp(data_rows):
-        milliseconds = bool([dr.t_record.timestamp for dr in data_rows
-                             if dr.t_record and dr.t_record.timestamp.microsecond % 1000])
-        microseconds = bool([dr.t_record.timestamp for dr in data_rows
-                             if dr.t_record and dr.t_record.timestamp.microsecond])
+        if isinstance(t_record, list):
+            for i, inner_t_record in enumerate(t_record):
+        # milliseconds = bool([dr.t_record.timestamp for dr in data_rows
+        #                      if dr.t_record and dr.t_record.timestamp.microsecond % 1000])
+        # microseconds = bool([dr.t_record.timestamp for dr in data_rows
+        #                      if dr.t_record and dr.t_record.timestamp.microsecond])
 
-        return milliseconds, microseconds
+        return True, True
+
+    def add_t_record(self, t_record, row_num):
+        if isinstance(t_record, list):
+            for i, inner_t_record in enumerate(t_record):
+                self.add_t_record(inner_t_record, row_num+i)
+        else:
+            self._xl_type(t_record.t_type, row_num, 0)
+            self._xl_quantity(t_record.buy_quantity, row_num, 1)
+            self._xl_asset(t_record.buy_asset, row_num, 2)
+            self._xl_value(t_record.buy_value, row_num, 3)
+            self._xl_quantity(t_record.sell_quantity, row_num, 4)
+            self._xl_asset(t_record.sell_asset, row_num, 5)
+            self._xl_value(t_record.sell_value, row_num, 6)
+            self._xl_quantity(t_record.fee_quantity, row_num, 7)
+            self._xl_asset(t_record.fee_asset, row_num, 8)
+            self._xl_value(t_record.fee_value, row_num, 9)
+            self._xl_wallet(t_record.wallet, row_num, 10)
+            self._xl_timestamp(t_record.timestamp, row_num, 11)
+            self._xl_note(t_record.note, row_num, 12)
 
     def add_row(self, data_row, row_num):
         self.worksheet.set_row(row_num, None, self.output.format_out_data)
 
         # Add transaction record
         if data_row.t_record:
-            self._xl_type(data_row.t_record.t_type, row_num, 0)
-            self._xl_quantity(data_row.t_record.buy_quantity, row_num, 1)
-            self._xl_asset(data_row.t_record.buy_asset, row_num, 2)
-            self._xl_value(data_row.t_record.buy_value, row_num, 3)
-            self._xl_quantity(data_row.t_record.sell_quantity, row_num, 4)
-            self._xl_asset(data_row.t_record.sell_asset, row_num, 5)
-            self._xl_value(data_row.t_record.sell_value, row_num, 6)
-            self._xl_quantity(data_row.t_record.fee_quantity, row_num, 7)
-            self._xl_asset(data_row.t_record.fee_asset, row_num, 8)
-            self._xl_value(data_row.t_record.fee_value, row_num, 9)
-            self._xl_wallet(data_row.t_record.wallet, row_num, 10)
-            self._xl_timestamp(data_row.t_record.timestamp, row_num, 11)
-            self._xl_note(data_row.t_record.note, row_num, 12)
+            self.add_t_record(data_row.t_record, row_num)
 
         if sys.version_info[0] < 3:
             in_row = [r.decode('utf8') for r in data_row.row]
